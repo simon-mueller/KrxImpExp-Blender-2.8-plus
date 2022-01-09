@@ -1,21 +1,17 @@
-# KrxImpExp wxImpExpUI for the Blender-Addon
+# KrxImpExp Addon for Blender API Version 2.8+
 
-Forked from http://krximpexp.sourceforge.net/
+Tested with latest version 3.0
 
-Make sure to clone with
-```
-git clone --recurse-submodules
-```
+This is an attempt to make the Addon compatible with the latest version of the Blender Python API (bpy).
 
-Build with
+## What is working
 
-```
-mkdir build
-cd build
-cmake ..
-```
+* 3DS Import/Export
 
-Open the solution with Visual Studio and build Release.
-For Debug the wxWidgets libraries won't link. If you need to debug, you'll need to build debug libraries for wxWidgets.
+## Partly working
 
-License: GNU GPL 3
+* ASC Import/Export
+
+## Work in progress
+
+Currently the bones are not being created fully in the armature.
