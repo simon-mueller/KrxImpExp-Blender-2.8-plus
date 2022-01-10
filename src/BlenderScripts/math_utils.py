@@ -30,6 +30,9 @@ def set_green(clr, g):
 
 def set_blue(clr, b):
 	clr[2] = b
+
+def set_alpha(clr, a):
+	clr[3] = a
 	
 def get_red(clr):
 	return clr[0]
@@ -39,6 +42,9 @@ def get_green(clr):
 
 def get_blue(clr):
 	return clr[2]
+
+def get_alpha(clr):
+	return clr[3]
 
 
 	
@@ -76,6 +82,9 @@ def get_vector_length(vec):
 
 def dot_product(vec1, vec2):
 	return vec1.dot(vec2)
+	
+def lerp_vector(vec1, vec2, t):
+	return vec1.lerp(vec2, t)
 
 	
 
@@ -127,6 +136,9 @@ def get_axis(q):
 	axis = Vector(((qx / sin_a), (qy / sin_a), (qz / sin_a)))
 	return axis
 
+def slerp_quaternion(q1, q2, t):
+	qres = q1.slerp(q2, t)
+	return qres
 
 	
 #----------------------------------

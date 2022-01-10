@@ -9,12 +9,13 @@
 import bpy
 from KrxImpExp.material import *
 from KrxImpExp.math_utils import *
+from KrxImpExp.gui import *
 
 # Creates a new object linked to mesh
 def new_mesh_object(name):
 	msh = bpy.data.meshes.new(name)
 	obj = bpy.data.objects.new(name, object_data = msh)
-	bpy.context.scene.objects.link(obj)
+	bpy.context.collection.objects.link(obj)
 	return obj
 
 # Checks if this object is linked to a mesh
@@ -31,7 +32,7 @@ class MeshData:
 				self.__mesh = obj.data
 				self.__remove_mesh = False
 			else:
-				self.__mesh = obj.to_mesh(bpy.context.scene, True, "RENDER")
+				self.__mesh = obj.to_mesh(preserve_all_data_layers=True)
 				self.__remove_mesh = True
 			self.__init_geometry()
 			self.__init_mapping()
@@ -46,21 +47,21 @@ class MeshData:
 		self.__faces = []
 		self.__facemats = []
 		
-		for f in mesh.polygons:
+		for p in mesh.polygons:
 			mat = None
-			matIndex = f.material_index
+			matIndex = p.material_index
 			if 0 <= matIndex and matIndex < len(obj.material_slots):
 				mat = obj.material_slots[matIndex].material
 			if mat == None and mesh.uv_textures.active != None:
-				tf = mesh.uv_textures.active.data[f.index]
-				if tf.image != None and tf.use_image:
+				tf = mesh.uv_textures.active.data[p.index]
+				if tf.image != None:
 					mat = get_material_by_image(tf.image)
 			
-			vs = f.vertices
-			for i in range(2, f.loop_total):
-				va = mesh.loops[f.loop_start].vertex_index
-				vb = mesh.loops[f.loop_start + i - 1].vertex_index
-				vc = mesh.loops[f.loop_start + i].vertex_index
+			vs = p.vertices
+			for i in range(2, p.loop_total):
+				va = mesh.loops[p.loop_start].vertex_index
+				vb = mesh.loops[p.loop_start + i - 1].vertex_index
+				vc = mesh.loops[p.loop_start + i].vertex_index
 				self.__faces.append([va, vb, vc])
 				self.__facemats.append(mat)
 	
@@ -75,11 +76,11 @@ class MeshData:
 			uv_layer = mesh.uv_layers.active.data
 			for uvl in uv_layer:
 				self.__tverts.append(uvl.uv)
-			for f in mesh.polygons:
-				for i in range(2, f.loop_total):
-					ta = f.loop_start
-					tb = f.loop_start + i - 1
-					tc = f.loop_start + i
+			for p in mesh.polygons:
+				for i in range(2, p.loop_total):
+					ta = p.loop_start
+					tb = p.loop_start + i - 1
+					tc = p.loop_start + i
 					self.__tvfaces.append([ta, tb, tc])
 	
 	# Destructor
@@ -152,14 +153,17 @@ class MeshData:
 		# Initialise the mesh's vertices and faces
 		if len(mesh.vertices) != 0 or len(mesh.polygons) != 0: # the "Mesh.from_pydata" function works only on clean meshes
 			return
+		print("Mesh ", mesh.name, ": generating from pydata ", len(self.__verts), " verts, ", len(self.__faces), " faces...")
 		mesh.from_pydata(self.__verts, [], self.__faces)
+		print("Mesh ", mesh.name, ": generating from pydata done!")
 
 		# Remove duplications from list of all the materials
+		print("Mesh ", mesh.name, ": creating material slots...")
 		matSet = list(set(self.__facemats))
 
 		# Align the size of obj.material_slots to the size of matSet
 		if len(obj.material_slots) != len(matSet):
-			bpy.context.scene.objects.active = obj
+			bpy.context.view_layer.objects.active = obj
 			delta = len(matSet) - len(obj.material_slots)
 			if delta > 0:
 				for j in range(0, delta):
@@ -169,36 +173,60 @@ class MeshData:
 					bpy.ops.object.material_slot_remove()
 		
 		# Setup material slots
+		matDict = {}
 		for j in range(0, len(matSet)):
 			obj.material_slots[j].link = "OBJECT"
 			obj.material_slots[j].material = matSet[j]
-			
+			matDict[matSet[j]] = j
+		print("Mesh ", mesh.name, ": creating material slots done!")
+
 		# Setup material indices for each face
-		for i in range(0, len(self.__faces)):
-			mat = self.__facemats[i]
-			matIndex = matSet.index(mat)
-			mesh.polygons[i].material_index = matIndex
+		print("Mesh ", mesh.name, ": applying ", len(matSet), " materials to ", len(mesh.polygons), " faces...")
+		mesh.update_tag()
+		for p in mesh.polygons:
+			faceIndex = p.index
+			if (faceIndex % 1000) == 999:
+				show_progress_bar("Applying materials to faces", faceIndex / len(mesh.polygons) * 100)
+			mat = self.__facemats[faceIndex]
+			matIndex = matDict[mat]
+			p.material_index = matIndex # works slowly (is there a way to optimize this line?)
+		print("Mesh ", mesh.name, ": applying materials to faces done!")
 		
 		# Setup texture coordinates
+		print("Mesh ", mesh.name, ": applying uv coordinates to ", len(mesh.polygons), " faces...")
 		if len(self.__tvfaces) != 0:
 			if mesh.uv_layers.active == None:
-				mesh.uv_textures.new()
+				mesh.uv_layers.new()
 			if mesh.uv_layers.active != None:
 				uv_layer = mesh.uv_layers.active.data
-				tfs = mesh.uv_textures.active.data
-				for faceIndex in range(0, len(self.__faces)):
-					f = mesh.polygons[faceIndex]
-					for j in range(0, f.loop_total):
-						uv_layer[f.loop_start + j].uv = self.__tverts[self.__tvfaces[faceIndex][j]]
+				tfs = mesh.uv_layers.active.data
+				for p in mesh.polygons:
+					faceIndex = p.index
+					if (faceIndex % 1000) == 999:
+						show_progress_bar("Applying uv coordinates to faces", faceIndex / len(mesh.polygons) * 100)
+					for li in p.loop_indices:
+						uv = self.__tverts[self.__tvfaces[faceIndex][li - p.loop_start]]
+						uv_layer[li].uv = uv # works slowly (is there a way to optimize this line?)
 					tf = tfs[faceIndex]
-					matIndex = f.material_index
+					matIndex = p.material_index
 					if matIndex < len(obj.material_slots):
 						mat = obj.material_slots[matIndex].material
 						if mat != None:
-							tf.image = find_image_in_material_slots(mat)
+							mesh.texture_mesh = find_image_in_material_slots(mat)
+							
+		print("Mesh ", mesh.name, ": applying uv coordinates done!")
 		
 		# Calculate edges
+		print("Mesh ", mesh.name, ": updating...")
 		mesh.update(calc_edges = True)
+		print("Mesh ", mesh.name, ": updating done!")
+		
+		mesh.calc_normals()
+
+		# We must NOT call "validate" here because it will try to remove one side of each portal!
+		#print("Mesh ", mesh.name, ": validating...")
+		#mesh.validate(verbose = False)
+		#print("Mesh ", mesh.name, ": validating done!")
 		
 		# Return the list of all the objects which were changed
 		return [obj]

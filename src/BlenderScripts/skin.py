@@ -52,7 +52,7 @@ class SkinData:
 		
 		for extbone in extbones:
 			bone_name = extbone[1]
-			self.__skinobj.vertex_groups.new(bone_name)
+			self.__skinobj.vertex_groups.new(name=bone_name)
 	
 	def get_num_bones(self):
 		return len(self.__obj.vertex_groups)

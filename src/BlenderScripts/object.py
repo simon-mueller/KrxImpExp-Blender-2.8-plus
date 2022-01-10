@@ -6,7 +6,7 @@
 #-------------------------------------------------------------------------------------------------------
 
 # Import required modules
-import bpy
+import bpy, inspect
 from KrxImpExp.bone_utils import *
 from KrxImpExp.math_utils import *
 
@@ -20,6 +20,7 @@ from KrxImpExp.math_utils import *
 
 # Returns name of an extended object
 def get_object_name(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
 		return extobj.name
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
@@ -31,6 +32,7 @@ def get_object_name(extobj):
 
 # Changes name of an extended object
 def set_object_name(extobj, newname):
+	print(inspect.currentframe().f_code.co_name, extobj, newname)
 	if type(extobj) == bpy.types.Object:
 		extobj.name = newname
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
@@ -43,13 +45,15 @@ def set_object_name(extobj, newname):
 		arm.name = new_obj_name
 		
 		start_editmode(obj)
-		arm.edit_bones[bone_name].name = new_bone_name
+		arm.edit_bones[arm.edit_bones.find(bone_name)].name = new_bone_name
+		print(inspect.currentframe().f_code.co_name, arm.edit_bones[arm.edit_bones.find(bone_name)].name)
 		end_editmode(obj)
 	else:
 		raise TypeError("set_object_name: error with argument 1")
 
 # Returns (extended) parent of an extended object
 def get_parent(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
 		if extobj.parent_type == "BONE":
 			return ((extobj.parent, extobj.parent_bone)) # A normal object linked to a bone
@@ -59,8 +63,9 @@ def get_parent(extobj):
 		obj = extobj[0]
 		arm = obj.data
 		bone_name = extobj[1]
-		bone = arm.bones[bone_name]
+		bone = arm.bones[arm.bones.find(bone_name)]
 		if bone.parent == None:
+			print(inspect.currentframe().f_code.co_name, "Returning root bone:", obj, bone)
 			return obj # The root bone is considered to be linked to armature object
 		else:
 			return ((obj, bone.parent.name)) # Bone is linked to another bone
@@ -69,10 +74,11 @@ def get_parent(extobj):
 
 # Returns list of child objects for an extended object
 def get_children(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	children = []
 	if extobj == None:
 		# children of the root object = objects with no parent	
-		for o in bpy.context.scene.objects:
+		for o in bpy.context.view_layer.objects:
 			if o.parent == None:
 				children.append(o)
 	elif type(extobj) == bpy.types.Object:
@@ -83,7 +89,7 @@ def get_children(extobj):
 				if b.parent == None:
 					children.append((extobj, b.name))
 		# children of object
-		for o in bpy.context.scene.objects:
+		for o in bpy.context.view_layer.objects:
 			if o.parent == extobj and o.parent_type == "OBJECT":
 				children.append(o)
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
@@ -94,7 +100,7 @@ def get_children(extobj):
 		for b in arm.bones:
 			if b.parent != None and b.parent.name == bone_name:
 				children.append((obj, b.name))
-		for o in bpy.context.scene.objects:
+		for o in bpy.context.view_layer.objects:
 			if o.parent == obj and o.parent_type == "BONE" and o.parent_bone == bone_name:
 				children.append(o)
 	else:
@@ -104,6 +110,7 @@ def get_children(extobj):
 
 # Changes parent of an extended object
 def set_parent(extobj, extnewparent):
+	print(inspect.currentframe().f_code.co_name, extobj, extnewparent)
 	if type(extobj) == bpy.types.Object:
 		# clear the previous parent object
 		deselect_all()
@@ -114,14 +121,14 @@ def set_parent(extobj, extnewparent):
 		if extnewparent == None:
 			pass
 		elif type(extnewparent) == bpy.types.Object:
-			bpy.context.scene.objects.active = extnewparent
+			bpy.context.view_layer.objects.active = extnewparent
 			bpy.ops.object.parent_set(type = "OBJECT")
 		elif type(extnewparent) == tuple and len(extnewparent) == 2 and type(extnewparent[0]) == bpy.types.Object and type(extnewparent[1]) == str:
 			newparent = extnewparent[0]
 			arm = newparent.data
 			parent_bone_name = extnewparent[1]
-			arm.bones.active = arm.bones[parent_bone_name]
-			bpy.context.scene.objects.active = newparent
+			arm.bones.active = arm.bones[arm.bones.find(parent_bone_name)]
+			bpy.context.view_layer.objects.active = newparent
 			bpy.ops.object.parent_set(type = "BONE")
 		else:
 			raise TypeError("set_parent_object: error with argument 2")
@@ -132,7 +139,7 @@ def set_parent(extobj, extnewparent):
 		bone_name = extobj[1]
 		parent_bone_name = extnewparent[1]
 		start_editmode(obj)
-		eb = arm.edit_bones[bone_name]
+		eb = arm.edit_bones[arm.edit_bones.find(bone_name)]
 		eb.parent = None
 		end_editmode()
 		
@@ -141,8 +148,8 @@ def set_parent(extobj, extnewparent):
 		elif type(extnewparent) == tuple and len(extnewparent) == 2 and type(extnewparent[0]) == bpy.types.Object and type(extnewparent[1]) == str and extnewparent[0] == obj:
 			parent_bone_name = extnewparent[1]
 			start_editmode(obj)
-			eb = arm.edit_bones[bone_name]
-			eb.parent = arm.edit_bones[parent_bone_name]
+			eb = arm.edit_bones[arm.edit_bones.find(bone_name)]
+			eb.parent = arm.edit_bones[arm.edit_bones.find(parent_bone_name)]
 			end_editmode()
 		else:
 			raise TypeError("set_parent_object: error with argument 2")
@@ -152,6 +159,7 @@ def set_parent(extobj, extnewparent):
 		
 # Returns an extended object's transformation matrix (4x4)
 def get_transform(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
 		return prepare_matrix(extobj.matrix_world)
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
@@ -167,12 +175,15 @@ def get_transform(extobj):
 
 # Changes an extended object's transformation matrix (4x4) - don't use it to create animation
 def set_transform(extobj, newtransform):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
 		# not a bone
+		print("not a bone")
 		new_tm = unprepare_matrix(newtransform)
 		extobj.matrix_basis = new_tm
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
 		# bone
+		print("it's a bone")
 		new_tm = unprepare_bone_matrix(newtransform)
 		arm_obj = extobj[0]
 		arm = arm_obj.data
@@ -181,22 +192,24 @@ def set_transform(extobj, newtransform):
 		new_bone_mat = arm_mat.inverted() * new_tm
 		# if some mesh is linked to this armature, set pose; else edit armature's bone itself.
 		noAttachedMesh = True
-		for o in bpy.context.scene.objects:
+		for o in bpy.context.view_layer.objects:
 			if o.parent == arm_obj:
 				noAttachedMesh = False
 				break
 		if noAttachedMesh:
+			print("no mesh is attached")
 			start_editmode(arm_obj)
 			boneO = new_bone_mat.col[3].to_3d()
 			boneY = new_bone_mat.col[1].to_3d()
 			boneZ = new_bone_mat.col[2].to_3d()
-			eb = arm.edit_bones[bone_name]
+			eb = arm.edit_bones[arm.edit_bones.find(bone_name)]
 			length = eb.length
 			eb.head = boneO
 			eb.tail = boneO + boneY * length
 			eb.align_roll(boneZ)
 			end_editmode()
 		else:
+			print("attaching mesh")
 			start_posemode(arm_obj)
 			arm_obj.pose.bones[bone_name].matrix = new_bone_mat
 			end_posemode()
@@ -207,16 +220,17 @@ def set_transform(extobj, newtransform):
 def copy_object(extobj):
 	if type(extobj) == bpy.types.Object:
 		newobj = extobj.copy()
-		bpy.context.scene.objects.link(newobj)
+		bpy.context.view_layer.objects.link(newobj)
 		return newobj
 	else:
 		raise TypeError("copy_object: error with argument 1")
 
 # Deletes a specified extended object
 def delete_object(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
-		if bpy.context.scene.objects.get(extobj.name) == extobj:
-			bpy.context.scene.objects.unlink(extobj)
+		if bpy.context.collection.objects.get(extobj.name) == extobj:
+			bpy.context.collection.objects.unlink(extobj)
 		if extobj.users == 0:
 			bpy.data.objects.remove(extobj)
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
@@ -224,7 +238,8 @@ def delete_object(extobj):
 		bone_name = extobj[1]
 		arm = obj.data
 		start_editmode(obj)
-		arm.edit_bones.remove(arm.edit_bones[bone_name])
+		print(inspect.currentframe().f_code.co_name, "Removing", bone_name, arm.edit_bones.find(bone_name))
+		arm.edit_bones.remove(arm.edit_bones.get(bone_name))
 		end_editmode()
 	else:
 		raise TypeError("delete_object: error with argument 1")
@@ -232,10 +247,11 @@ def delete_object(extobj):
 # Replace the first object's data with the second object's data
 # Use it only for objects which contain meshes
 def replace_object(extobj, srcextobj):
+	print(inspect.currentframe().f_code.co_name, extobj, srcextobj)
 	if type(extobj) == bpy.types.Object and type(srcextobj) == bpy.types.Object and extobj.type == srcextobj.type:
 		# Copy material slots
 		if len(extobj.material_slots) != len(srcextobj.material_slots):
-			bpy.context.scene.objects.active = extobj
+			bpy.context.view_layer.objects.active = extobj
 			delta = len(srcextobj.material_slots) - len(extobj.material_slots)
 			if delta > 0:
 				for j in range(0, delta):
@@ -272,6 +288,7 @@ def find_object_by_name(name):
 			arm = o.data
 			for b in arm.bones:
 				if b.name == bone_name:
+					print(inspect.currentframe().f_code.co_name, "Found object", o, "with name", b.name)
 					return ((o, b.name))
 	return None
 
@@ -287,6 +304,7 @@ def unique_object_name(name):
 		name = txt + sidx
 		if find_object_by_name(name) == None:
 			break
+	print(inspect.currentframe().f_code.co_name, "unique name created:", name)
 	return name
 
 # Returns number of vertices in object if this is a mesh; returns 0 if this is not a mesh.
@@ -309,14 +327,17 @@ def calculate_num_materials(extobj):
 
 # Checks if an object is visible (in Editor).	
 def is_visible(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
-		return not(extobj.hide)
+		#return not(extobj.hide)
+		return extobj.visible_get() # Blender 3.0
 	return False
 
 # Sets if an object is visible (in Editor).	
 def show(extobj, show):
+	print(inspect.currentframe().f_code.co_name, extobj, show)
 	if type(extobj) == bpy.types.Object:
-		extobj.hide = not(show)
+		extobj.hide_set(not(show)) # Blender 3.0
 
 # Checks if an object is visible (for Renderer).
 def is_renderable(extobj):
@@ -332,16 +353,16 @@ def set_renderable(extobj, renderable):
 # Checks if an object is drawn as bounding box.
 def get_box_mode(extobj):
 	if type(extobj) == bpy.types.Object:
-		return extobj.draw_type == "BOUNDS"
+		return extobj.display_type == "BOUNDS"
 	return False
 
 # Sets if an object is drawn as bounding box.
 def set_box_mode(extobj, boxmode):
 	if type(extobj) == bpy.types.Object:
 		if(boxmode):
-			extobj.draw_type = "BOUNDS"
+			extobj.display_type = "BOUNDS"
 		else:
-			extobj.draw_type = "TEXTURED"
+			extobj.display_type = "TEXTURED"
 
 # Checks if an object is transparent.
 def is_transparent(extobj):
@@ -371,48 +392,55 @@ def set_wire_color(extobj, clr):
 	
 # Checks if an object is selected.
 def is_selected(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
 		if extobj.type == "ARMATURE":
 			return False
-		return extobj.select
+		return extobj.select_get()
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
 		obj = extobj[0]
 		bone_name = extobj[1]
 		arm = obj.data
-		return (obj.select and arm.bones[bone_name].select)
+		print(inspect.currentframe().f_code.co_name, obj.select_get(), arm.bones[arm.bones.find(bone_name)].select, bone_name)
+		return (obj.select_get() and arm.bones[arm.bones.find(bone_name)].select)
 	else:
 		raise TypeError("select: error with argument 1")
 
 # Selects an object.
 def select(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
-		extobj.select = True
-		bpy.context.scene.objects.active = extobj
+		extobj.select_set(True)
+		bpy.context.view_layer.objects.active = extobj
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
 		obj = extobj[0]
 		bone_name = extobj[1]
 		arm = obj.data
-		obj.select = True
-		bone = arm.bones[bone_name]
+		obj.select_set(True)
+		print(inspect.currentframe().f_code.co_name, arm.bones.get(bone_name), bone_name, arm.bones.find(bone_name))
+		bone = arm.bones[arm.bones.find(bone_name)]
 		bone.select = True
 		arm.bones.active = bone
+		print("Select object", bone_name, bone, obj)
 	else:
 		raise TypeError("select: error with argument 1")
 		
 # Deselects an object.
 def deselect(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object:
 		extobj.select = False
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
 		obj = extobj[0]
 		bone_name = extobj[1]
 		arm = obj.data
-		arm.bones[bone_name].select = False
+		arm.bones[arm.bones.find(bone_name)].select = False
 	else:
 		raise TypeError("select: error with argument 1")		
 
 # Deselect all the objects.
 def deselect_all():
+	print(inspect.currentframe().f_code.co_name)
 	bpy.ops.object.select_all(action = "DESELECT")
 	for arm in bpy.data.armatures:
 		for b in arm.bones:
@@ -420,33 +448,37 @@ def deselect_all():
 	
 # Starts object's editing.
 def start_editmode(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj.name)
 	if type(extobj) == bpy.types.Object:
 		if bpy.context.edit_object != extobj:
 			if bpy.context.edit_object != None:
 				bpy.ops.object.editmode_toggle()
-			bpy.context.scene.objects.active = extobj
+			bpy.context.view_layer.objects.active = extobj
 			bpy.ops.object.editmode_toggle()
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
 		obj = extobj[0]
 		bone_name = extobj[1]
 		start_editmode(obj)
 		arm = obj.data
-		arm.bones.active = arm.bones[bone_name]
+		arm.bones.active = arm.bones[arm.bones.find(bone_name)]
+		print(inspect.currentframe().f_code.co_name, "active bone is:" , arm.bones.active)
 	else:
 		raise TypeError("start_editmode: error with argument 1")
 		
 # Ends object's editing.
 def end_editmode():
+	print(inspect.currentframe().f_code.co_name)
 	if bpy.context.edit_object != None:
 		bpy.ops.object.editmode_toggle()
 		
 # Starts object's editing.
 def start_posemode(extobj):
+	print(inspect.currentframe().f_code.co_name, extobj)
 	if type(extobj) == bpy.types.Object and extobj.type == "ARMATURE":
 		if not(bpy.context.active_pose_bone in list(extobj.pose.bones)):
 			if bpy.context.active_pose_bone != None:
 				bpy.ops.object.posemode_toggle()
-			bpy.context.scene.objects.active = extobj
+			bpy.context.view_layer.objects.active = extobj
 			bpy.ops.object.posemode_toggle()
 	elif type(extobj) == tuple and len(extobj) == 2 and type(extobj[0]) == bpy.types.Object and type(extobj[1]) == str:
 		obj = extobj[0]
@@ -456,6 +488,7 @@ def start_posemode(extobj):
 		
 # Ends object's editing.
 def end_posemode():
+	print(inspect.currentframe().f_code.co_name)
 	if bpy.context.active_pose_bone != None:
 		bpy.ops.object.posemode_toggle()
 		

@@ -2,6 +2,7 @@
 #-------------------------------------------------------------------------------------------------------
 # This file is a part of the KrxImpExp package.
 # Author: Vitaly Baranov
+# Blender 2.8+ Compatibility by Simon Müller
 # License: GPL
 #-------------------------------------------------------------------------------------------------------
 
@@ -9,8 +10,7 @@ bl_info = {
  	"name": "KrxImpExp", 
 	"author": "Kerrax (kerrax@mail.ru)", 
 	"version": (1, 0), 
-	"blender": (2, 5, 6), 
-	"api": 34076, 
+	"blender": (3, 0, 0), 
 	"location": "File > Import-Export", 
 	"description": "Plugins written by Kerrax for G1-G2a modding", 
 	"category": "Import-Export"} 

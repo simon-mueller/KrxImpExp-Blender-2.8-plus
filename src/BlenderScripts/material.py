@@ -9,10 +9,13 @@
 # Import required modules.
 import bpy
 from KrxImpExp.image_search import *
+from bpy_extras.node_shader_utils import PrincipledBSDFWrapper
+
 
 # Creates a new material.
 def new_material(name):
 	mat = bpy.data.materials.new(name)
+	mat.use_nodes = True
 	return mat
 
 # Returns the name of the material.
@@ -55,13 +58,19 @@ def set_diffuse_map_filename(mat, filename):
 	image = load_image(filename)
 	texture = bpy.data.textures.new(filename, "IMAGE")
 	texture.image = image
-	slots = mat.texture_slots
+	# FIXME
+	slots = mat.texture_paint_slots
 	for i in range(0, len(slots)):
 		slots.clear(i)
-	slot = mat.texture_slots.create(0)
-	slot.texture = texture
-	slot.texture_coords = "UV"
-	mat.use_textures[0] = True
+
+	bsdf = mat.node_tree.nodes["Principled BSDF"]
+	texImage = mat.node_tree.nodes.new('ShaderNodeTexImage')
+	texImage.image = texture.image
+	mat.node_tree.links.new(bsdf.inputs['Base Color'], texImage.outputs['Color'])
+	#slot = mat.texture_slots.add()
+	#slot.texture = texture
+	#slot.texture_coords = "UV"
+	#mat.use_textures[0] = True
 
 # Returns diffuse color of the material.
 def get_diffuse_color(mat):
@@ -69,12 +78,13 @@ def get_diffuse_color(mat):
 
 # Sets diffuse color of the material.
 def set_diffuse_color(mat, clr):
+	clr.append(1)
 	mat.diffuse_color = clr
 	
 # Finds a first image in the material's slot.
 # The function returns None if this material does not contain a texture with image.
 def find_image_in_material_slots(mat):
-	slots = mat.texture_slots
+	slots = mat.texture_paint_slots
 	tex = None
 	for j in range(len(slots) - 1, -1, -1):
 		slot = slots[j]

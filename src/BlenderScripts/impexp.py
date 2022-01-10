@@ -29,12 +29,13 @@ from KrxImpExp.string import *
 
 # Gets the objects' selection
 def store_selection():
-	return [obj.name for obj in bpy.data.objects if obj.select]
+	return [obj.name for obj in bpy.data.objects if obj.select_get()]
 
 # Sets the objects' selection
 def restore_selection(selnames):
 	for obj in bpy.data.objects:
-		obj.select = (obj.name in selnames)
+		obj.select_set(obj.name in selnames)
+	
 
 # Global dictionaries of registed importers and registered exporters
 __registered_importers = {}
@@ -47,10 +48,11 @@ def register_importer(impname, fileext, description):
 		bl_label = "Import " + fileext.upper()
 		
 		filename_ext = "." + fileext
-		quiet = BoolProperty(default=False, options={"HIDDEN"})
-		filter_glob = StringProperty(default="*." + fileext, options={'HIDDEN'})
+		quiet: BoolProperty(default=False, options={"HIDDEN"})
+		filter_glob: StringProperty(default="*." + fileext, options={'HIDDEN'})
 		
 		def execute(self, context):
+			print("import was called with file", self.filepath)
 			if file_exists(self.filepath):
 				end_posemode()
 				end_editmode()
@@ -67,7 +69,7 @@ def register_importer(impname, fileext, description):
 	def __menu_func_import(self, context):
 		self.layout.operator(__PrivateOperator.bl_idname, text = description + " (." + fileext + ")")
 	
-	bpy.types.INFO_MT_file_import.append(__menu_func_import)
+	bpy.types.TOPBAR_MT_file_import.append(__menu_func_import)
 	
 	global __registered_importers
 	__registered_importers[impname] = [__menu_func_import, __PrivateOperator]
@@ -75,7 +77,7 @@ def register_importer(impname, fileext, description):
 # Unregisters an importer
 def unregister_importer(impname):
 	global __registered_importers
-	bpy.types.INFO_MT_file_import.remove(__registered_importers[impname][0])
+	bpy.types.TOPBAR_MT_file_import.remove(__registered_importers[impname][0])
 	bpy.utils.unregister_class(__registered_importers[impname][1])
 	del __registered_importers[impname]
 
@@ -86,8 +88,8 @@ def register_exporter(expname, fileext, description):
 		bl_label = "Export " + fileext.upper()
 		
 		filename_ext = "." + fileext
-		quiet = BoolProperty(default=False, options={"HIDDEN"})
-		filter_glob = StringProperty(default="*." + fileext, options={'HIDDEN'})
+		quiet: BoolProperty(default=False, options={"HIDDEN"})
+		filter_glob: StringProperty(default="*." + fileext, options={'HIDDEN'})
 		
 		def execute(self, context):
 			end_posemode()
@@ -105,7 +107,7 @@ def register_exporter(expname, fileext, description):
 	def __menu_func_export(self, context):
 		self.layout.operator(__PrivateOperator.bl_idname, text = description + " (." + fileext + ")")
 	
-	bpy.types.INFO_MT_file_export.append(__menu_func_export)
+	bpy.types.TOPBAR_MT_file_export.append(__menu_func_export)
 	
 	global __registered_exporters
 	__registered_exporters[expname] = [__menu_func_export, __PrivateOperator]	
@@ -113,7 +115,7 @@ def register_exporter(expname, fileext, description):
 # Unregisters an exporter
 def unregister_exporter(expname):
 	global __registered_exporters
-	bpy.types.INFO_MT_file_export.remove(__registered_exporters[expname][0])
+	bpy.types.TOPBAR_MT_file_export.remove(__registered_exporters[expname][0])
 	bpy.utils.unregister_class(__registered_exporters[expname][1])
 	del __registered_exporters[expname]
 

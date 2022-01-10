@@ -72,7 +72,7 @@ def reset_scene():
 	
 # Return path to the addons' directory, with trailing separator.
 def get_root_dir():
-	s = bpy.utils.script_paths("addons", False)[0] + os.sep
+	s = str(bpy.utils.script_paths()[0]) + os.sep + ".." + os.sep + "addons" + os.sep
 	return s
 	
 # Returns path to directory with configuration files, with trailing separator.
